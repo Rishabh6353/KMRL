@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - Intelligent Document Processing{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Upload Document
+                </h4>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="fileInput" class="form-label">Select Document</label>
+                        <input type="file" class="form-control" id="fileInput" name="file" required>
+                        <div class="form-text">
+                            Supported formats: PDF, DOC, DOCX, TXT, PNG, JPG, JPEG (Max size: 16MB)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h5>Drag and drop your file here</h5>
+                                <p class="text-muted">or click to browse</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoProcess" checked>
+                            <label class="form-check-label" for="autoProcess">
+                                Start processing automatically after upload
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
+                            <i class="fas fa-upload me-2"></i>
+                            Upload Document
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Progress Bar -->
+                <div class="mt-4" id="progressContainer" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: 0%" 
+                             id="progressBar">
+                        </div>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted" id="progressText">Uploading...</small>
+                    </div>
+                </div>
+                
+                <!-- Upload Result -->
+                <div class="mt-4" id="uploadResult" style="display: none;">
+                    <div class="alert" id="resultAlert">
+                        <div id="resultContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Uploads -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Uploads
+                </h5>
+            </div>
+            <div class="card-body" id="recentUploads">
+                <div class="text-center text-muted">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Loading recent uploads...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const uploadResult = document.getElementById('uploadResult');
+    const resultAlert = document.getElementById('resultAlert');
+    const resultContent = document.getElementById('resultContent');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // Load recent uploads
+    loadRecentUploads();
+    
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            updateUploadArea(files[0]);
+        }
+    });
+    
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            updateUploadArea(this.files[0]);
+        }
+    });
+    
+    // Form submission
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!fileInput.files.length) {
+            showResult('Please select a file to upload.', 'danger');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        // Show progress
+        showProgress();
+        
+        // Upload file
+        fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+            
+            if (data.success) {
+                showResult(
+                    `<strong>Success!</strong> Document uploaded successfully. Document ID: ${data.document_id}`,
+                    'success'
+                );
+                
+                // Reset form
+                uploadForm.reset();
+                resetUploadArea();
+                
+                // Reload recent uploads
+                loadRecentUploads();
+                
+                // Redirect to document detail page after a delay
+                setTimeout(() => {
+                    window.location.href = `/document/${data.document_id}`;
+                }, 2000);
+            } else {
+                showResult(`<strong>Error!</strong> ${data.error}`, 'danger');
+            }
+        })
+        .catch(error => {
+            hideProgress();
+            showResult(`<strong>Error!</strong> ${error.message}`, 'danger');
+        });
+    });
+    
+    function updateUploadArea(file) {
+        const content = uploadArea.querySelector('.upload-content');
+        const fileSize = formatFileSize(file.size);
+        const fileType = file.type || 'Unknown';
+        
+        content.innerHTML = `
+            <i class="fas fa-file fa-3x text-primary mb-3"></i>
+            <h5>${file.name}</h5>
+            <p class="text-muted">
+                ${fileType} • ${fileSize}
+            </p>
+            <small class="text-success">
+                <i class="fas fa-check me-1"></i>
+                File selected
+            </small>
+        `;
+    }
+    
+    function resetUploadArea() {
+        const content = uploadArea.querySelector('.upload-content');
+        content.innerHTML = `
+            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+            <h5>Drag and drop your file here</h5>
+            <p class="text-muted">or click to browse</p>
+        `;
+    }
+    
+    function showProgress() {
+        progressContainer.style.display = 'block';
+        uploadResult.style.display = 'none';
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+        
+        // Simulate progress (in real implementation, you'd track actual progress)
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            
+            progressBar.style.width = progress + '%';
+            
+            if (progress > 90) {
+                clearInterval(interval);
+                progressText.textContent = 'Processing...';
+            }
+        }, 200);
+    }
+    
+    function hideProgress() {
+        progressContainer.style.display = 'none';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload Document';
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading...';
+    }
+    
+    function showResult(message, type) {
+        resultAlert.className = `alert alert-${type}`;
+        resultContent.innerHTML = message;
+        uploadResult.style.display = 'block';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function loadRecentUploads() {
+        fetch('/api/documents?per_page=5')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recentUploads');
+            
+            if (data.documents && data.documents.length > 0) {
+                let html = '<div class="list-group list-group-flush">';
+                
+                data.documents.forEach(doc => {
+                    const statusBadge = getStatusBadge(doc.status);
+                    const uploadDate = new Date(doc.upload_date).toLocaleDateString();
+                    
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${doc.original_filename}</h6>
+                                <small class="text-muted">Uploaded: ${uploadDate}</small>
+                            </div>
+                            <div class="text-end">
+                                ${statusBadge}
+                                <br>
+                                <a href="/document/${doc.id}" class="btn btn-sm btn-outline-primary mt-1">
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-folder-open fa-2x mb-2"></i>
+                        <p>No recent uploads</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('recentUploads').innerHTML = `
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error loading recent uploads
+                </div>
+            `;
+        });
+    }
+    
+    function getStatusBadge(status) {
+        const badges = {
+            'completed': '<span class="badge bg-success">Completed</span>',
+            'processing': '<span class="badge bg-warning">Processing</span>',
+            'pending': '<span class="badge bg-secondary">Pending</span>',
+            'failed': '<span class="badge bg-danger">Failed</span>'
+        };
+        
+        return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
+    }
+});
+</script>
+
+<style>
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.upload-area:hover {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.upload-area.dragover {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+    transform: scale(1.02);
+}
+
+.upload-content i {
+    display: block;
+}
+</style>
+{% endblock %}

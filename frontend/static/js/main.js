@@ -4,8 +4,34 @@
 let currentTheme = 'light';
 let notifications = [];
 
+// Handle page transitions
+window.addEventListener('beforeunload', function() {
+    localStorage.setItem('pageIsLoading', 'true');
+});
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle the page loader
+    const pageLoader = document.getElementById('pageLoader');
+    
+    // Show content with a slight delay for smoother transition
+    setTimeout(function() {
+        if (pageLoader) {
+            pageLoader.classList.add('fade-out');
+        }
+        
+        // Remove the loader from DOM after transition
+        setTimeout(function() {
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+        }, 500);
+        
+        // Clear the loading state
+        localStorage.removeItem('pageIsLoading');
+    }, 300);
+    
+    // Initialize the app
     initializeApp();
 });
 
@@ -13,7 +39,7 @@ function initializeApp() {
     // Initialize tooltips
     initializeTooltips();
     
-    // Initialize theme
+    // Initialize theme (already pre-initialized in head)
     initializeTheme();
     
     // Initialize notifications
@@ -35,9 +61,30 @@ function initializeTooltips() {
 }
 
 function initializeTheme() {
-    // Check for saved theme preference or default to light
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
+    // Check for saved theme preference, system preference, or default to light
+    if (localStorage.getItem('theme')) {
+        // If theme is explicitly set in localStorage, use that
+        setTheme(localStorage.getItem('theme'));
+    } else {
+        // Check if user prefers dark mode at system level
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme('dark');
+        } else {
+            setTheme('light');
+        }
+        
+        // Listen for changes in system theme preference
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (!localStorage.getItem('theme')) { // Only update if user hasn't manually set a theme
+                setTheme(event.matches ? 'dark' : 'light');
+            }
+        });
+    }
+    
+    // Mark the body as theme-initialized to enable transitions
+    setTimeout(() => {
+        document.body.classList.add('theme-initialized');
+    }, 300);
 }
 
 function setTheme(theme) {
@@ -48,9 +95,19 @@ function setTheme(theme) {
     // Update theme toggle button if it exists
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
-        themeToggle.innerHTML = theme === 'dark' ? 
-            '<i class="fas fa-sun"></i>' : 
-            '<i class="fas fa-moon"></i>';
+        // Add a small animation effect
+        themeToggle.classList.add('rotate');
+        
+        setTimeout(() => {
+            themeToggle.innerHTML = theme === 'dark' ? 
+                '<i class="fas fa-sun"></i>' : 
+                '<i class="fas fa-moon"></i>';
+            
+            // Remove animation class after transition completes
+            setTimeout(() => {
+                themeToggle.classList.remove('rotate');
+            }, 300);
+        }, 150);
     }
 }
 
@@ -391,7 +448,7 @@ function showLoading(element, text = 'Loading...') {
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-2 text-muted">${text}</p>
+                <p class="mt-2">${text}</p>
             </div>
         `;
     }
@@ -419,9 +476,9 @@ function showError(element, message, retry = null) {
     if (element) {
         let html = `
             <div class="text-center py-4">
-                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3 opacity-90"></i>
                 <h5 class="text-danger">Error</h5>
-                <p class="text-muted">${message}</p>
+                <p>${message}</p>
         `;
         
         if (retry) {

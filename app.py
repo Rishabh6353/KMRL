@@ -6,6 +6,7 @@ This version handles missing dependencies gracefully and provides basic function
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, send_file
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 import os
 import sys
@@ -74,6 +75,7 @@ class Document(db.Model):
         return {
             'id': self.id,
             'filename': self.original_filename,
+            'original_filename': self.original_filename,
             'file_type': self.file_type,
             'file_size': self.file_size,
             'upload_date': self.upload_date.isoformat() if self.upload_date else None,
@@ -277,11 +279,28 @@ def index():
         db.func.count(Document.id)
     ).group_by(Document.department).all()
     
+    # Convert documents to dict with compatible status names
+    recent_documents_list = []
+    for doc in recent_docs:
+        doc_dict = doc.to_dict()
+        # Convert 'processed' status to 'completed' for frontend consistency
+        if doc_dict['status'] == 'processed':
+            doc_dict['status'] = 'completed'
+        # Ensure uploaded status becomes 'pending'
+        elif doc_dict['status'] == 'uploaded':
+            doc_dict['status'] = 'pending'
+        
+        # Ensure upload_date is properly formatted for template
+        if doc.upload_date:
+            doc_dict['upload_date'] = doc.upload_date
+        
+        recent_documents_list.append(doc_dict)
+    
     stats = {
         'total_documents': total_docs,
         'processed_documents': processed_docs,
         'pending_documents': total_docs - processed_docs,
-        'recent_documents': [doc.to_dict() for doc in recent_docs],
+        'recent_documents': recent_documents_list,
         'document_types': dict(doc_types),
         'departments': dict(departments)
     }
@@ -569,17 +588,55 @@ def api_documents():
     """Get documents list with pagination."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
+    search = request.args.get('search', '')
+    status = request.args.get('status', '')
+    category = request.args.get('category', '')
     
-    docs = Document.query.order_by(Document.upload_date.desc()).all()
+    # Start with base query
+    query = Document.query
+    
+    # Apply filters if they exist
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Document.original_filename.ilike(search_term),
+                Document.extracted_text.ilike(search_term),
+                Document.summary.ilike(search_term)
+            )
+        )
+    
+    if status:
+        query = query.filter(Document.status == status)
+    
+    if category:
+        query = query.filter(Document.document_type == category)
+    
+    # Apply sorting and pagination
+    total = query.count()
+    total_pages = (total // per_page) + (1 if total % per_page > 0 else 0)
+    
+    if page > total_pages and total_pages > 0:
+        page = total_pages
+    
+    # Ensure we don't go below page 1
+    if page < 1:
+        page = 1
+    
+    # Calculate offset
+    offset = (page - 1) * per_page
+    
+    # Get paginated results
+    docs = query.order_by(Document.upload_date.desc()).offset(offset).limit(per_page).all()
     
     return jsonify({
         'success': True,
         'documents': [doc.to_dict() for doc in docs],
         'pagination': {
             'current_page': page,
-            'total_pages': 1,
-            'has_prev': False,
-            'has_next': False
+            'total_pages': total_pages,
+            'has_prev': page > 1,
+            'has_next': page < total_pages
         }
     })
 

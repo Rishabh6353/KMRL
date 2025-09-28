@@ -6,7 +6,6 @@
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">
-            <i class="fas fa-tachometer-alt me-2"></i>
             Dashboard
         </h1>
     </div>
@@ -130,75 +129,154 @@
             </div>
             <div class="card-body">
                 {% if stats.recent_documents %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Filename</th>
-                                    <th>Type</th>
-                                    <th>Category</th>
-                                    <th>Status</th>
-                                    <th>Upload Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for doc in stats.recent_documents %}
-                                <tr>
-                                    <td>
-                                        <i class="fas fa-file me-2"></i>
-                                        {{ doc.original_filename }}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary">{{ doc.file_type.split('/')[-1] if doc.file_type else 'unknown' }}</span>
-                                    </td>
-                                    <td>
-                                        {% if doc.classification %}
-                                            <span class="badge bg-info">{{ doc.classification }}</span>
-                                        {% else %}
-                                            <span class="text-muted">Not classified</span>
+                    <!-- Bulk Actions Controls -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="selectAllRecentDocs()">
+                                <i class="fas fa-check-square me-1"></i>
+                                Select All
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="clearRecentSelection()">
+                                <i class="fas fa-square me-1"></i>
+                                Clear Selection
+                            </button>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-primary" onclick="showRecentBulkActions()" id="recentBulkActionsBtn" style="display: none;">
+                                <i class="fas fa-cogs me-1"></i>
+                                Bulk Actions (<span id="recentSelectionCount">0</span>)
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Document Cards Layout -->
+                    <div class="row g-3">
+                        {% for doc in stats.recent_documents %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card document-card h-100" data-doc-id="{{ doc.id }}">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input recent-document-checkbox" 
+                                               type="checkbox" 
+                                               value="{{ doc.id }}"
+                                               onchange="toggleRecentDocumentSelection(this.value)">
+                                    </div>
+                                    {% if doc.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif doc.status == 'processing' %}
+                                        <span class="badge bg-info">Processing</span>
+                                    {% elif doc.status == 'uploaded' %}
+                                        <span class="badge bg-warning">Uploaded</span>
+                                    {% elif doc.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ doc.status }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-file fa-2x text-primary"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="card-title mb-1" title="{{ doc.original_filename }}">
+                                                {{ doc.original_filename[:30] }}{% if doc.original_filename|length > 30 %}...{% endif %}
+                                            </h6>
+                                            <small class="text-muted">
+                                                {% if doc.file_size %}
+                                                    {% set size = doc.file_size %}
+                                                    {% if size < 1024 %}
+                                                        {{ size }} Bytes
+                                                    {% elif size < 1048576 %}
+                                                        {{ "%.1f"|format(size/1024) }} KB
+                                                    {% elif size < 1073741824 %}
+                                                        {{ "%.1f"|format(size/1048576) }} MB
+                                                    {% else %}
+                                                        {{ "%.1f"|format(size/1073741824) }} GB
+                                                    {% endif %}
+                                                {% else %}
+                                                    Unknown size
+                                                {% endif %} • 
+                                                {{ doc.file_type.split('/')[-1] if doc.file_type else 'unknown' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="document-info">
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Upload Date</small>
+                                                <small>{{ doc.upload_date.strftime('%Y-%m-%d %H:%M') if doc.upload_date else 'Unknown' }}</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Department</small>
+                                                <small>{{ doc.department or 'Unassigned' }}</small>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if doc.document_type %}
+                                            <div class="mb-2">
+                                                <small class="text-muted d-block">Document Type</small>
+                                                <span class="badge bg-light text-dark">{{ doc.document_type }}</span>
+                                            </div>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if doc.status == 'completed' %}
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check me-1"></i>Completed
-                                            </span>
-                                        {% elif doc.status == 'processing' %}
-                                            <span class="badge bg-warning">
-                                                <i class="fas fa-spinner fa-spin me-1"></i>Processing
-                                            </span>
-                                        {% elif doc.status == 'pending' %}
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-clock me-1"></i>Pending
-                                            </span>
-                                        {% elif doc.status == 'failed' %}
-                                            <span class="badge bg-danger">
-                                                <i class="fas fa-times me-1"></i>Failed
-                                            </span>
+                                        
+                                        {% if doc.summary %}
+                                            <div class="mb-2">
+                                                <small class="text-muted d-block">Summary Preview</small>
+                                                <p class="small text-truncate mb-0" title="{{ doc.summary }}">
+                                                    {{ doc.summary[:100] }}{% if doc.summary|length > 100 %}...{% endif %}
+                                                </p>
+                                            </div>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if doc.upload_date %}
-                                            {{ doc.upload_date }}
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{{ url_for('document_detail', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye me-1"></i>View
-                                        </a>
-                                        {% if doc.status == 'pending' or doc.status == 'failed' %}
-                                            <button class="btn btn-sm btn-outline-success ms-1" onclick="processDocument({{ doc.id }})">
-                                                <i class="fas fa-play me-1"></i>Process
+                                    </div>
+                                </div>
+                                
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('document_detail', doc_id=doc.id) }}" class="btn btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button class="btn btn-outline-secondary" onclick="downloadDocument('{{ doc.id }}')">
+                                                <i class="fas fa-download"></i>
                                             </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                            {% if doc.status == 'failed' or doc.status == 'pending' or doc.status == 'uploaded' %}
+                                                <button class="btn btn-outline-warning" onclick="processDocument('{{ doc.id }}')">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                    type="button" 
+                                                    data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ url_for('document_detail', doc_id=doc.id) }}">
+                                                        <i class="fas fa-eye me-2"></i>View Details
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item" onclick="downloadDocument('{{ doc.id }}')">
+                                                        <i class="fas fa-download me-2"></i>Download
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item" onclick="deleteRecentDocument('{{ doc.id }}')">
+                                                        <i class="fas fa-trash me-2"></i>Delete
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 {% else %}
                     <div class="text-center py-4">
@@ -234,14 +312,45 @@
         </div>
     </div>
 </div>
+
+<!-- Bulk Actions Modal for Recent Documents -->
+<div class="modal fade" id="recentBulkActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Select an action to perform on <span id="recentSelectedCount">0</span> selected documents:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="bulkProcessRecent()">
+                        <i class="fas fa-play me-2"></i>
+                        Process Selected Documents
+                    </button>
+                    <button class="btn btn-danger" onclick="bulkDeleteRecent()">
+                        <i class="fas fa-trash me-2"></i>
+                        Delete Selected Documents
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Global variables for dashboard bulk operations
+let selectedRecentDocuments = new Set();
+
 function processDocument(docId) {
     // Show processing modal
     var modal = new bootstrap.Modal(document.getElementById('processingModal'));
     modal.show();
+    
+    // Convert string to number if it's a string
+    docId = typeof docId === 'string' ? parseInt(docId) : docId;
     
     fetch(`/api/process/${docId}`, {
         method: 'POST'
@@ -278,6 +387,230 @@ function refreshStatistics() {
     })
     .catch(error => {
         showAlert(`Error refreshing statistics: ${error.message}`, 'danger');
+    });
+}
+
+// Bulk operations for Recent Documents
+function toggleRecentDocumentSelection(docId) {
+    // Convert to number since it's coming from input value
+    docId = parseInt(docId);
+    
+    if (selectedRecentDocuments.has(docId)) {
+        selectedRecentDocuments.delete(docId);
+    } else {
+        selectedRecentDocuments.add(docId);
+    }
+    updateRecentSelectionUI();
+}
+
+function toggleSelectAllRecent() {
+    const checkbox = document.getElementById('selectAllRecentCheckbox');
+    const documentCheckboxes = document.querySelectorAll('.recent-document-checkbox');
+    
+    if (checkbox.checked) {
+        documentCheckboxes.forEach(cb => {
+            cb.checked = true;
+            selectedRecentDocuments.add(parseInt(cb.value));
+        });
+    } else {
+        documentCheckboxes.forEach(cb => {
+            cb.checked = false;
+            selectedRecentDocuments.delete(parseInt(cb.value));
+        });
+    }
+    updateRecentSelectionUI();
+}
+
+function selectAllRecentDocs() {
+    document.getElementById('selectAllRecentCheckbox').checked = true;
+    toggleSelectAllRecent();
+}
+
+function clearRecentSelection() {
+    document.getElementById('selectAllRecentCheckbox').checked = false;
+    toggleSelectAllRecent();
+}
+
+function updateRecentSelectionUI() {
+    const count = selectedRecentDocuments.size;
+    const bulkActionsBtn = document.getElementById('recentBulkActionsBtn');
+    const selectionCount = document.getElementById('recentSelectionCount');
+    
+    if (count > 0) {
+        bulkActionsBtn.style.display = 'inline-block';
+        selectionCount.textContent = count;
+    } else {
+        bulkActionsBtn.style.display = 'none';
+    }
+}
+
+function showRecentBulkActions() {
+    document.getElementById('recentSelectedCount').textContent = selectedRecentDocuments.size;
+    const modal = new bootstrap.Modal(document.getElementById('recentBulkActionsModal'));
+    modal.show();
+}
+
+function deleteRecentDocument(docId) {
+    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+        return;
+    }
+    
+    // Convert string to number if it's a string
+    docId = typeof docId === 'string' ? parseInt(docId) : docId;
+    
+    fetch(`/api/document/${docId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Document deleted successfully!', 'success');
+            // Remove from selected documents if it was selected
+            selectedRecentDocuments.delete(docId);
+            // Reload the page
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showAlert(`Error deleting document: ${data.error}`, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert(`Error deleting document: ${error.message}`, 'danger');
+    });
+}
+
+function bulkProcessRecent() {
+    if (selectedRecentDocuments.size === 0) {
+        showAlert('No documents selected.', 'warning');
+        return;
+    }
+    
+    // Hide the bulk actions modal
+    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('recentBulkActionsModal'));
+    if (bulkModal) bulkModal.hide();
+    
+    // Show processing modal
+    const processingModal = new bootstrap.Modal(document.getElementById('processingModal'));
+    processingModal.show();
+    
+    // Convert Set to Array
+    const docIds = Array.from(selectedRecentDocuments);
+    let processed = 0;
+    let errors = 0;
+    
+    // Process each document sequentially
+    const processNext = (index) => {
+        if (index >= docIds.length) {
+            // All documents processed
+            processingModal.hide();
+            
+            if (errors > 0) {
+                showAlert(`Processing complete: ${processed} documents processed, ${errors} errors.`, 'warning');
+            } else {
+                showAlert(`Successfully processed ${processed} documents.`, 'success');
+            }
+            
+            // Reload the page
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+            
+            return;
+        }
+        
+        // Process current document
+        const docId = docIds[index];
+        
+        fetch(`/api/process/${docId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                processed++;
+            } else {
+                errors++;
+                console.error(`Error processing document ${docId}:`, data.error);
+            }
+            
+            // Process next document
+            processNext(index + 1);
+        })
+        .catch(error => {
+            errors++;
+            console.error(`Error processing document ${docId}:`, error);
+            
+            // Process next document
+            processNext(index + 1);
+        });
+    };
+    
+    // Start processing
+    processNext(0);
+}
+
+function bulkDeleteRecent() {
+    if (selectedRecentDocuments.size === 0) {
+        showAlert('No documents selected.', 'warning');
+        return;
+    }
+    
+    const count = selectedRecentDocuments.size;
+    if (!confirm(`Are you sure you want to delete ${count} document${count > 1 ? 's' : ''}? This action cannot be undone.`)) {
+        return;
+    }
+    
+    // Hide the bulk actions modal
+    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('recentBulkActionsModal'));
+    if (bulkModal) bulkModal.hide();
+    
+    const docIds = Array.from(selectedRecentDocuments);
+    let completed = 0;
+    let successful = 0;
+    let failed = 0;
+    
+    // Process each document deletion
+    docIds.forEach(docId => {
+        fetch(`/api/document/${docId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            completed++;
+            if (data.success) {
+                successful++;
+            } else {
+                failed++;
+            }
+            
+            // When all deletions are complete
+            if (completed === docIds.length) {
+                if (failed === 0) {
+                    showAlert(`${successful} document${successful > 1 ? 's' : ''} deleted successfully!`, 'success');
+                } else {
+                    showAlert(`${successful} document${successful > 1 ? 's' : ''} deleted successfully, ${failed} failed.`, 'warning');
+                }
+                
+                // Clear selection and reload
+                selectedRecentDocuments.clear();
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            completed++;
+            failed++;
+            
+            if (completed === docIds.length) {
+                showAlert(`${successful} document${successful > 1 ? 's' : ''} deleted successfully, ${failed} failed.`, 'warning');
+                selectedRecentDocuments.clear();
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
+        });
     });
 }
 

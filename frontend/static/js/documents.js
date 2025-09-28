@@ -18,22 +18,28 @@ function initializeDocumentsPage() {
 }
 
 function initializeFilters() {
-    const filterForm = document.getElementById('filterForm');
-    if (!filterForm) return;
-
-    // Initialize date range picker
-    initializeDateRangePicker();
+    // Initialize filter change handlers for individual filters
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
     
-    // Initialize filter change handlers
-    const filterInputs = filterForm.querySelectorAll('input, select');
-    filterInputs.forEach(input => {
-        input.addEventListener('change', handleFilterChange);
-    });
+    if (statusFilter) {
+        statusFilter.addEventListener('change', handleFilterChange);
+    }
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', handleFilterChange);
+    }
     
     // Initialize clear filters button
-    const clearFiltersBtn = document.getElementById('clearFilters');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     if (clearFiltersBtn) {
         clearFiltersBtn.addEventListener('click', clearFilters);
+    }
+    
+    // Initialize refresh button
+    const refreshBtn = document.getElementById('refreshDocumentsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadDocuments);
     }
 }
 
@@ -65,27 +71,64 @@ function handleFilterChange() {
 }
 
 function updateFiltersFromForm() {
-    const form = document.getElementById('filterForm');
-    if (!form) return;
-
-    const formData = new FormData(form);
+    // Get filter values directly from the filter elements
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('searchInput');
+    
     currentFilters = {};
     
-    for (let [key, value] of formData.entries()) {
-        if (value.trim() !== '') {
-            currentFilters[key] = value;
-        }
+    // Add filters if they have values
+    if (statusFilter && statusFilter.value.trim() !== '') {
+        currentFilters['status'] = statusFilter.value;
+    }
+    
+    if (categoryFilter && categoryFilter.value.trim() !== '') {
+        currentFilters['category'] = categoryFilter.value;
+    }
+    
+    if (searchInput && searchInput.value.trim() !== '') {
+        currentFilters['search'] = searchInput.value;
     }
 }
 
 function clearFilters() {
-    const form = document.getElementById('filterForm');
-    if (!form) return;
-
-    form.reset();
+    // Reset filter values directly
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('searchInput');
+    
+    if (statusFilter) statusFilter.value = '';
+    if (categoryFilter) categoryFilter.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    // Clear filters object and reset to first page
     currentFilters = {};
     currentPage = 1;
+    
+    // Reload documents with cleared filters
+    console.log('Filters cleared, reloading documents');
     loadDocuments();
+    
+    // Add visual feedback
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-info alert-dismissible fade show mt-3';
+    alertDiv.innerHTML = `
+        <i class="fas fa-info-circle me-2"></i>
+        Filters have been reset.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const filterCard = document.querySelector('.card:has(#statusFilter)');
+    if (filterCard) {
+        filterCard.parentNode.insertBefore(alertDiv, filterCard.nextSibling);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 3000);
+    }
 }
 
 function initializeBulkActions() {
@@ -183,21 +226,36 @@ function initializeSearch() {
     const searchInput = document.getElementById('searchInput');
     if (!searchInput) return;
 
-    // Debounced search
+    // Debounced search to avoid too many requests while typing
     const debouncedSearch = debounce(() => {
         currentPage = 1;
         updateFiltersFromForm();
         loadDocuments();
     }, 300);
     
+    // Handle input events for real-time search
     searchInput.addEventListener('input', debouncedSearch);
+    
+    // Also handle the Enter key for immediate search
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            currentPage = 1;
+            updateFiltersFromForm();
+            loadDocuments();
+        }
+    });
 }
 
 function loadDocuments() {
     const container = document.getElementById('documentsContainer');
     if (!container) return;
 
-    IDP.showLoading(container, 'Loading documents...');
+    // Show appropriate loading message based on filters
+    const isSearching = currentFilters.search || currentFilters.status || currentFilters.category;
+    const loadingMessage = isSearching ? 'Searching documents...' : 'Loading documents...';
+    
+    IDP.showLoading(container, loadingMessage);
     
     // Build query parameters
     const params = new URLSearchParams({
@@ -205,36 +263,54 @@ function loadDocuments() {
         ...currentFilters
     });
     
+    console.log('Loading documents with filters:', currentFilters);
+    
     IDP.apiRequest(`/api/documents?${params.toString()}`)
         .then(data => {
             if (data.success) {
-                renderDocuments(data.documents);
+                renderDocuments(data.documents, isSearching);
                 updatePagination(data.pagination);
             } else {
                 throw new Error(data.error || 'Failed to load documents');
             }
         })
         .catch(error => {
+            console.error('Error loading documents:', error);
             IDP.showError(container, error.message, 'loadDocuments()');
         });
 }
 
-function renderDocuments(documents) {
+function renderDocuments(documents, isSearching = false) {
     const container = document.getElementById('documentsContainer');
     if (!container) return;
 
     if (documents.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-5">
-                <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
-                <h5 class="text-muted">No documents found</h5>
-                <p class="text-muted">Try adjusting your search or filters.</p>
-                <a href="/upload" class="btn btn-primary">
-                    <i class="fas fa-upload me-2"></i>
-                    Upload Documents
-                </a>
-            </div>
-        `;
+        // Different message for search vs. empty state
+        if (isSearching) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-4x text-muted mb-3 opacity-50"></i>
+                    <h5>No matching documents found</h5>
+                    <p class="text-muted">Try different search terms or filters.</p>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="fas fa-times me-2"></i>
+                        Clear Filters
+                    </button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-folder-open fa-4x text-muted mb-3 opacity-50"></i>
+                    <h5>No documents found</h5>
+                    <p class="text-muted">Upload your first document to get started.</p>
+                    <a href="/upload" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>
+                        Upload Documents
+                    </a>
+                </div>
+            `;
+        }
         return;
     }
 
@@ -615,21 +691,29 @@ function bulkExportDocuments() {
 }
 
 // Utility function
-function debounce(func, wait, immediate) {
+// Utility function for debouncing
+function debounce(func, delay) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            timeout = null;
-            if (!immediate) func(...args);
-        };
-        const callNow = immediate && !timeout;
+    return function() {
+        const context = this;
+        const args = arguments;
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-        if (callNow) func(...args);
+        timeout = setTimeout(() => func.apply(context, args), delay);
     };
 }
 
 // Keyboard shortcuts for documents page
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + A: Select all documents
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = !selectAllCheckbox.checked;
+            handleSelectAll({ target: selectAllCheckbox });
+        }
+    }
+});
 document.addEventListener('keydown', function(e) {
     // Ctrl/Cmd + A: Select all documents
     if ((e.ctrlKey || e.metaKey) && e.key === 'a') {

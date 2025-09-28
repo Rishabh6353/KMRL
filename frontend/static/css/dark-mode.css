@@ -1,0 +1,340 @@
+/* Dark Mode Additional Styles */
+
+/* Navbar styles for light/dark mode */
+[data-theme='light'] .navbar,
+:root:not([data-theme='dark']) .navbar {
+    background-color: var(--nav-bg-color) !important;
+}
+
+[data-theme='dark'] .navbar {
+    background-color: var(--nav-bg-color) !important;
+}
+
+[data-theme='light'] .navbar-brand,
+[data-theme='light'] .nav-link,
+:root:not([data-theme='dark']) .navbar-brand,
+:root:not([data-theme='dark']) .nav-link {
+    color: var(--nav-text-color) !important;
+}
+
+[data-theme='dark'] .navbar-brand,
+[data-theme='dark'] .nav-link {
+    color: var(--nav-text-color) !important;
+}
+
+/* Hamburger menu color fixes */
+[data-theme='light'] .navbar-toggler-icon,
+:root:not([data-theme='dark']) .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280, 0, 0, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+[data-theme='dark'] .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+[data-theme='light'] .navbar-toggler,
+:root:not([data-theme='dark']) .navbar-toggler {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark Mode Additional Styles */
+
+/* Theme transition enhancements */
+:root {
+    transition: all 0s; /* Override default transitions on initial load */
+}
+
+body.theme-initialized {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.page-loader {
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+/* Table styles for dark mode */
+[data-theme='dark'] .table {
+    color: var(--text-color);
+}
+
+[data-theme='dark'] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Alert styles for dark mode */
+[data-theme='dark'] .alert-primary {
+    background-color: rgba(13, 110, 253, 0.2);
+    border-color: rgba(13, 110, 253, 0.3);
+    color: #8bb9fe;
+}
+
+[data-theme='dark'] .alert-secondary {
+    background-color: rgba(108, 117, 125, 0.2);
+    border-color: rgba(108, 117, 125, 0.3);
+    color: #c2c7cc;
+}
+
+[data-theme='dark'] .alert-success {
+    background-color: rgba(25, 135, 84, 0.2);
+    border-color: rgba(25, 135, 84, 0.3);
+    color: #8fd19e;
+}
+
+[data-theme='dark'] .alert-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.3);
+    color: #ea868f;
+}
+
+[data-theme='dark'] .alert-warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffda6a;
+}
+
+[data-theme='dark'] .alert-info {
+    background-color: rgba(13, 202, 240, 0.2);
+    border-color: rgba(13, 202, 240, 0.3);
+    color: #6edff6;
+}
+
+/* Form styles for dark mode */
+[data-theme='dark'] .form-control,
+[data-theme='dark'] .form-select {
+    background-color: #2b2b2b;
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme='dark'] .form-control:focus,
+[data-theme='dark'] .form-select:focus {
+    background-color: #333;
+    border-color: #0d6efd;
+    color: var(--text-color);
+}
+
+/* Input placeholder color for dark mode */
+[data-theme='dark'] .form-control::placeholder {
+    color: #8c8c8c;
+}
+
+/* Theme toggle button style */
+#themeToggle {
+    border-radius: 20%;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+/* Light mode styles for theme toggle button */
+[data-theme='light'] #themeToggle,
+:root:not([data-theme='dark']) #themeToggle {
+    color: #212529; /* Dark color for the icon */
+    border: 1px solid #212529; /* Dark outline */
+}
+
+[data-theme='light'] #themeToggle:hover,
+:root:not([data-theme='dark']) #themeToggle:hover {
+    background-color: rgba(33, 37, 41, 0.1); /* Dark background with opacity on hover */
+}
+
+/* Dark mode styles for theme toggle button */
+[data-theme='dark'] #themeToggle {
+    color: #ffffff; /* White color for the icon */
+    border: 1px solid #ffffff; /* White outline */
+}
+
+[data-theme='dark'] #themeToggle:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* White background with opacity on hover */
+}
+
+/* Animation for theme toggle button */
+@keyframes rotate360 {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#themeToggle.rotate {
+    animation: rotate360 0.5s ease;
+}
+
+
+/* Modal styles for dark mode */
+[data-theme='dark'] .modal-content {
+    background-color: #1e1e1e;
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+[data-theme='dark'] .modal-header,
+[data-theme='dark'] .modal-footer {
+    border-color: var(--border-color);
+}
+
+/* Dropdown styles for dark mode */
+[data-theme='dark'] .dropdown-menu {
+    background-color: #2b2b2b;
+    border-color: var(--border-color);
+}
+
+[data-theme='dark'] .dropdown-item {
+    color: var(--text-color);
+}
+
+[data-theme='dark'] .dropdown-item:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+/* Card text color fix for dark mode */
+[data-theme='dark'] .card.text-black {
+    color: var(--text-color) !important;
+}
+
+/* Progress bar dark mode */
+[data-theme='dark'] .progress {
+    background-color: #333;
+}
+
+/* Card header background for sections with icons (Recent Uploads, Recent Documents, Processing Log) */
+[data-theme='dark'] .card-header:has(h5 i.fas.fa-history),
+[data-theme='dark'] .card-header:has(h5 i.fas.fa-clock),
+[data-theme='dark'] .card-header:has(h5 i.fas.fa-list-alt) {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+}
+
+/* Recent Uploads items background for dark mode */
+[data-theme='dark'] #recentUploads .list-group-item {
+    background-color: #2d2d2d;
+    border-color: #3d3d3d;
+    color: #ecf0f1;
+}
+
+/* Recent Documents table for dark mode */
+[data-theme='dark'] .card:has(.card-header:has(h5 i.fas.fa-clock)) .table {
+    color: #ecf0f1;
+}
+
+/* Dashboard Recent Documents table styles */
+[data-theme='dark'] .card:has(.card-header:has(h5 i.fas.fa-clock)) .table-hover tbody tr:hover {
+    background-color: #2d3748;
+}
+
+[data-theme='dark'] .card:has(.card-header:has(h5 i.fas.fa-clock)) .fw-medium {
+    color: #e2e8f0;
+}
+
+[data-theme='dark'] .card:has(.card-header:has(h5 i.fas.fa-clock)) .text-muted {
+    color: #a0aec0 !important;
+}
+
+/* Recent Uploads items hover effect */
+[data-theme='dark'] #recentUploads .list-group-item:hover {
+    background-color: #333333;
+}
+
+/* Text muted color adjustment for dark mode in recent uploads */
+[data-theme='dark'] #recentUploads .text-muted {
+    color: #adb5bd !important;
+}
+
+/* Make sure status badges remain visible in dark mode */
+[data-theme='dark'] #recentUploads .badge {
+    font-weight: 600;
+}
+
+/* Processing Log Timeline for dark mode */
+[data-theme='dark'] .timeline::before {
+    background: #4a5568; /* Darker line color for dark mode */
+}
+
+[data-theme='dark'] .timeline-content {
+    background-color: #2d3748; /* Darker background for timeline content */
+    border-color: #4a5568; /* Darker border color */
+    color: #e2e8f0; /* Light text color */
+}
+
+/* Preserve the marker colors but add more contrast in dark mode */
+[data-theme='dark'] .timeline-marker.bg-success {
+    background-color: #2f855a !important; /* Darker green */
+}
+
+[data-theme='dark'] .timeline-marker.bg-danger {
+    background-color: #c53030 !important; /* Darker red */
+}
+
+[data-theme='dark'] .timeline-marker.bg-primary {
+    background-color: #3182ce !important; /* Darker blue */
+}
+
+[data-theme='dark'] .timeline-marker.bg-warning {
+    background-color: #d69e2e !important; /* Darker yellow */
+}
+
+/* Text styling within timeline content */
+[data-theme='dark'] .timeline-content h6 {
+    color: #e2e8f0; /* Light text for headings */
+}
+
+[data-theme='dark'] .timeline-content p {
+    color: #cbd5e0; /* Slightly darker text for paragraphs */
+}
+
+[data-theme='dark'] .timeline-content .text-muted {
+    color: #a0aec0 !important; /* Muted text color for dark mode */
+}
+
+/* Styling for "No processing logs available" empty state */
+[data-theme='dark'] .card:has(.card-header:has(h5 i.fas.fa-list-alt)) .text-muted {
+    color: #a0aec0 !important;
+}
+
+/* Document Card Styling for Dark Mode */
+[data-theme='dark'] .document-card {
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme='dark'] .document-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .document-card .card-header {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme='dark'] .document-card .card-footer {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--border-color);
+}
+
+[data-theme='dark'] .document-card .document-info {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 0.75rem;
+}
+
+[data-theme='dark'] .document-card .badge.bg-light {
+    background-color: #2d3748 !important;
+    color: #e2e8f0 !important;
+}

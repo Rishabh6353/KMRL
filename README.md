@@ -54,7 +54,7 @@ A comprehensive web-based document processing system that automatically ingests,
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/prathampmp23/KMRL-AI-Summarizer-SIH-ProblemStatement-2025.git
    cd intelligent-document-processing
    ```
 
@@ -326,3 +326,4 @@ For support and questions:
 - Bootstrap for UI components
 - Flask for web framework
 - All open-source contributors# IntelligentDocumentProcessing
+# temp

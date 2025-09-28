@@ -7,7 +7,7 @@ import sys
 import sqlite3
 from datetime import datetime
 
-# Define functions from app_simple.py
+# Define functions from app.py
 def extract_text_basic(file_path):
     """Basic text extraction with fallbacks."""
     text = ""

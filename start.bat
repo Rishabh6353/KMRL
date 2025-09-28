@@ -35,6 +35,6 @@ echo Open your browser to: http://localhost:5000
 echo.
 
 REM Start the simplified application
-python app_simple.py
+python app.py
 
 pause

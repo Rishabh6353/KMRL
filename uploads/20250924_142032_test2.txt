@@ -1,0 +1,25 @@
+Employee Resume
+
+Name: Rohan Sharma
+Date of Birth: 15-08-1998
+Email: rohan.sharma@example.com
+Phone: +91-9876543210
+
+Education:
+- B.Tech in Computer Science, IIT Delhi (2016-2020)
+
+Work Experience:
+- Software Developer at TechSoft Pvt Ltd (2020 - Present)
+
+Skills:
+- Java, Python, React, SQL
+
+References:
+Available upon request.
+
+Submitted To:
+Human Resources Department
+XYZ Corporation
+hr@company.com
+
+--- End of Document ---

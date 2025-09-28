@@ -326,4 +326,3 @@ For support and questions:
 - Bootstrap for UI components
 - Flask for web framework
 - All open-source contributors# IntelligentDocumentProcessing
-# temp

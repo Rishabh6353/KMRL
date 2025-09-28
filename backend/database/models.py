@@ -19,7 +19,7 @@ class Document(db.Model):
     # Processing results
     extracted_text = db.Column(db.Text)
     summary = db.Column(db.Text)
-    classification = db.Column(db.String(100))
+    document_type = db.Column(db.String(100))
     confidence_score = db.Column(db.Float)
     department = db.Column(db.String(100))
     
@@ -35,7 +35,7 @@ class Document(db.Model):
             'status': self.status,
             'extracted_text': self.extracted_text,
             'summary': self.summary,
-            'classification': self.classification,
+            'document_type': self.document_type,
             'confidence_score': self.confidence_score,
             'department': self.department
         }

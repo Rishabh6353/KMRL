@@ -1,0 +1,24 @@
+Invoice Number: INV-2025-0912
+Date: 24-09-2025
+
+From:
+ABC Suppliers Pvt Ltd
+123 Business Street, Mumbai, India
+
+To:
+Finance Department
+XYZ Corporation
+456 Corporate Avenue, Bangalore, India
+
+Item Description: Software License Renewal (1 Year)
+Quantity: 10
+Unit Price: ₹12,000
+Total Amount: ₹1,20,000
+
+Payment Terms: Net 30 days
+Bank Details: HDFC Bank, A/C No: 123456789, IFSC: HDFC0001234
+
+Prepared By: Finance Manager
+Contact: finance@company.com
+
+--- End of Document ---

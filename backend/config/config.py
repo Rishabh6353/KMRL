@@ -31,6 +31,7 @@ class Config:
     # API Keys
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     GOOGLE_CLOUD_API_KEY = os.environ.get('GOOGLE_CLOUD_API_KEY')
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
     
     # Redis
     REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')

@@ -30,6 +30,14 @@ except ImportError:
             size_bytes /= 1024.0
         return f"{size_bytes:.1f} TB"
 
+# Import Gemini classification service
+try:
+    from backend.modules.classification.gemini_classification import GeminiDocumentClassifier
+    HAS_GEMINI_CLASSIFIER = True
+except ImportError:
+    HAS_GEMINI_CLASSIFIER = False
+    print("⚠️ Gemini classification not available - install google-generativeai")
+
 # Setup basic logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,12 +54,26 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', '104857600'))  # 100MB
 
+# Set Gemini API key directly (temporary fix for .env issues)
+if not os.getenv('GEMINI_API_KEY'):
+    os.environ['GEMINI_API_KEY'] = 'AIzaSyBWi1SCZyH70k-WpUH60pdyQ9hZuUC5q50'
+
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize extensions
 CORS(app)
 db = SQLAlchemy(app)
+
+# Initialize Gemini classifier
+gemini_classifier = None
+if HAS_GEMINI_CLASSIFIER:
+    try:
+        gemini_classifier = GeminiDocumentClassifier()
+        logger.info("✅ Gemini classifier initialized")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize Gemini classifier: {e}")
+        gemini_classifier = None
 
 # Register template filters
 app.jinja_env.filters['format_file_size'] = format_file_size
@@ -130,7 +152,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def extract_text_basic(file_path):
-    """Basic text extraction with fallbacks."""
+    """Enhanced text extraction with better error handling."""
     text = ""
     
     try:
@@ -138,30 +160,71 @@ def extract_text_basic(file_path):
         if file_path.lower().endswith('.txt'):
             with open(file_path, 'r', encoding='utf-8') as f:
                 text = f.read()
+            logger.info(f"✅ Extracted text from TXT file: {len(text)} characters")
+                
+        # Try DOCX files
+        elif file_path.lower().endswith('.docx'):
+            try:
+                from docx import Document
+                doc = Document(file_path)
+                text_parts = []
+                for paragraph in doc.paragraphs:
+                    if paragraph.text.strip():
+                        text_parts.append(paragraph.text.strip())
+                text = "\n".join(text_parts)
+                logger.info(f"✅ Extracted text from DOCX file: {len(text)} characters")
+            except ImportError:
+                logger.warning("⚠️ python-docx not installed - cannot extract from DOCX")
+                text = "DOCX processing not available - install python-docx"
+            except Exception as e:
+                logger.error(f"DOCX extraction error: {e}")
+                text = f"DOCX extraction failed: {str(e)}"
                 
         # Try image OCR if available
         elif HAS_TESSERACT and HAS_PIL and file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.gif')):
-            image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
+            try:
+                image = Image.open(file_path)
+                text = pytesseract.image_to_string(image)
+                logger.info(f"✅ Extracted text from image using OCR: {len(text)} characters")
+            except Exception as e:
+                logger.error(f"OCR extraction error: {e}")
+                text = f"OCR extraction failed: {str(e)}"
             
         # Basic PDF handling (if available)
         elif file_path.lower().endswith('.pdf'):
             if HAS_PYMUPDF:
-                import fitz  # PyMuPDF
-                doc = fitz.open(file_path)
-                text_parts = []
-                for page_num in range(len(doc)):
-                    page = doc[page_num]
-                    text_parts.append(page.get_text())
-                text = "\n\n".join(text_parts)
-                doc.close()
+                try:
+                    import fitz  # PyMuPDF
+                    doc = fitz.open(file_path)
+                    text_parts = []
+                    for page_num in range(len(doc)):
+                        page = doc[page_num]
+                        page_text = page.get_text()
+                        if page_text.strip():
+                            text_parts.append(page_text.strip())
+                    text = "\n\n".join(text_parts)
+                    doc.close()
+                    logger.info(f"✅ Extracted text from PDF: {len(text)} characters")
+                except Exception as e:
+                    logger.error(f"PDF extraction error: {e}")
+                    text = f"PDF extraction failed: {str(e)}"
             else:
                 logger.warning("⚠️ PDF processing not available for {}".format(file_path))
                 text = "PDF processing not available - install PyMuPDF"
                 
+        else:
+            logger.warning(f"⚠️ Unsupported file type: {file_path}")
+            text = "Unsupported file type for text extraction"
+                
     except Exception as e:
         logger.error(f"Text extraction failed: {e}")
         text = f"Text extraction failed: {str(e)}"
+    
+    # Clean up the text
+    if text:
+        text = text.strip()
+        # Remove excessive whitespace
+        text = ' '.join(text.split())
     
     return text
 
@@ -366,42 +429,42 @@ def document_detail(doc_id):
             'processing_time': 0.3
         })
         
-        # Step 3: OCR Processing
-        ocr_time = validation_time + timedelta(seconds=5)
-        ocr_status = 'completed' if document.extracted_text else 'failed'
-        ocr_message = 'Successfully extracted text' if document.extracted_text else 'Failed to extract text'
+        # Step 3: Text Extraction
+        extraction_time = validation_time + timedelta(seconds=5)
+        extraction_status = 'completed' if document.extracted_text and len(document.extracted_text.strip()) > 10 else 'failed'
+        extraction_message = f'Successfully extracted {len(document.extracted_text)} characters' if extraction_status == 'completed' else 'Failed to extract sufficient text'
         logs.append({
-            'module': 'OCR processing',
-            'message': ocr_message,
-            'status': ocr_status,
-            'timestamp': ocr_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'module': 'text extraction',
+            'message': extraction_message,
+            'status': extraction_status,
+            'timestamp': extraction_time.strftime('%Y-%m-%d %H:%M:%S'),
             'processing_time': random.uniform(1.5, 8.0)
         })
         
         # Step 4: Document Classification
-        if ocr_status == 'completed':
-            classification_time = ocr_time + timedelta(seconds=3)
+        if extraction_status == 'completed':
+            classification_time = extraction_time + timedelta(seconds=3)
             logs.append({
-                'module': 'document classification',
-                'message': f'Classified as: {document.document_type or "Unknown"}',
+                'module': 'AI classification',
+                'message': f'Classified as: {document.document_type or "Unknown"} (Confidence: {document.confidence_score:.1%})',
                 'status': 'completed',
                 'timestamp': classification_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'processing_time': random.uniform(0.8, 2.5)
             })
             
             # Step 5: Information Extraction
-            extraction_time = classification_time + timedelta(seconds=4)
+            info_extraction_time = classification_time + timedelta(seconds=4)
             logs.append({
                 'module': 'information extraction',
                 'message': 'Extracted key information from document',
                 'status': 'completed',
-                'timestamp': extraction_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': info_extraction_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'processing_time': random.uniform(1.2, 3.0)
             })
             
             # Step 6: Summarization
             if document.summary:
-                summary_time = extraction_time + timedelta(seconds=5)
+                summary_time = info_extraction_time + timedelta(seconds=5)
                 logs.append({
                     'module': 'text summarization',
                     'message': 'Generated document summary',
@@ -447,46 +510,65 @@ def api_upload():
         db.session.add(document)
         db.session.commit()
         
-        # Automatically process the document right after upload
+            # Automatically process the document right after upload
         try:
             # Extract text
             extracted_text = extract_text_basic(file_path)
             
-            # Classify document
-            doc_type = classify_document_basic(extracted_text)
+            # Use Gemini AI for intelligent classification
+            classification_result = None
+            doc_type = 'other'
+            confidence_score = 0.5
+            
+            # Always try Gemini first if available
+            if gemini_classifier and gemini_classifier.is_api_available():
+                logger.info("🤖 Using Gemini API for classification")
+                classification_result = gemini_classifier.classify_document(
+                    text=extracted_text,
+                    document_name=filename
+                )
+                if classification_result['success']:
+                    doc_type = classification_result['predicted_type'].lower().replace(' ', '_').replace('/', '_')
+                    confidence_score = classification_result['confidence']
+                    logger.info(f"✅ Gemini classification: {classification_result['predicted_type']} ({confidence_score:.2f})")
+                else:
+                    logger.warning(f"⚠️ Gemini classification failed: {classification_result.get('error', 'Unknown error')}")
+                    # Fallback to basic classification
+                    doc_type = classify_document_basic(extracted_text)
+                    confidence_score = 0.7
+            else:
+                logger.warning("⚠️ Gemini API not available, using fallback classification")
+                # Fallback to basic classification
+                doc_type = classify_document_basic(extracted_text)
+                confidence_score = 0.7
             
             # Summarize
             summary = summarize_text_basic(extracted_text)
             
-            # Enhanced department routing based on document type
+            # Enhanced department routing based on KMRL document types
             department_mapping = {
                 'invoice': 'Finance',
-                'financial': 'Finance',
-                'contract': 'Legal',
-                'policy': 'Legal',
-                'resume': 'HR',
-                'letter': 'Administration',
-                'memo': 'Administration',
-                'report': 'Analytics',
-                'proposal': 'Business Development',
-                'manual': 'Technical Documentation',
-                'technical_manual': 'IT',
-                'general': 'General Office'
+                'purchase_order': 'Procurement', 
+                'report': 'Operations',
+                'policy_/_circular': 'Administration',
+                'regulatory_/_compliance': 'Legal & Compliance',
+                'other': 'Operations'
             }
             
             # Update document with processing results
             document.extracted_text = extracted_text
-            document.document_type = doc_type
-            document.confidence_score = 0.8  # Add a reasonable confidence score for basic classification
+            document.document_type = doc_type.replace('_', ' ').title()
+            document.confidence_score = confidence_score
             document.summary = summary
             document.department = department_mapping.get(doc_type, 'General Office')
             document.status = 'processed'
             
             db.session.commit()
             
-            return jsonify({
+            # Prepare response data
+            response_data = {
                 'success': True,
-                'message': 'File uploaded and processed successfully',
+                'message': 'File uploaded and processed successfully with AI classification',
                 'document_id': document.id,
                 'document': {
                     'id': document.id,
@@ -499,7 +581,19 @@ def api_upload():
                     'summary': document.summary,
                     'status': document.status
                 }
-            })
+            }
+            
+            # Add classification details if available
+            if classification_result and classification_result.get('success'):
+                response_data['classification'] = {
+                    'predicted_type': classification_result['predicted_type'],
+                    'confidence': classification_result['confidence'],
+                    'reasoning': classification_result.get('reasoning', ''),
+                    'method': classification_result.get('method', 'unknown'),
+                    'api_available': gemini_classifier.is_api_available() if gemini_classifier else False
+                }
+            
+            return jsonify(response_data)
             
         except Exception as processing_error:
             # If processing fails, mark as failed but still return upload success
@@ -691,6 +785,8 @@ def api_delete(doc_id):
         logger.error(f"Delete error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+
 @app.errorhandler(404)
 def not_found(error):
     try:
@@ -708,12 +804,13 @@ with app.app_context():
     logger.info("✅ Database initialized")
 
 if __name__ == '__main__':
-    print("🚀 Starting Intelligent Document Processing System")
-    print("📁 Upload folder:", app.config['UPLOAD_FOLDER'])
-    print("🔧 Available features:")
-    print(f"   - OCR: {'✅' if HAS_TESSERACT and HAS_PIL else '❌'}")
-    print(f"   - Advanced NLP: {'✅' if HAS_SPACY else '❌'}")
-    print(f"   - ML Classification: {'✅' if HAS_SKLEARN else '❌'}")
-    print("\n🌐 Open your browser to: http://localhost:5000")
+    print("Starting Intelligent Document Processing System")
+    print("Upload folder:", app.config['UPLOAD_FOLDER'])
+    print("Available features:")
+    print(f"   - OCR: {'Available' if HAS_TESSERACT and HAS_PIL else 'Not Available'}")
+    print(f"   - Advanced NLP: {'Available' if HAS_SPACY else 'Not Available'}")
+    print(f"   - ML Classification: {'Available' if HAS_SKLEARN else 'Not Available'}")
+    print(f"   - Gemini API: {'Available' if gemini_classifier and gemini_classifier.is_api_available() else 'Not Available'}")
+    print("\nOpen your browser to: http://localhost:5000")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, load_dotenv=False)

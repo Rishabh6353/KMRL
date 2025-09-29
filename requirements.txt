@@ -5,6 +5,9 @@ Flask-SQLAlchemy>=3.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 
+# Google Gemini API for document classification
+google-generativeai>=0.3.0
+
 # Basic ML and NLP - Simplified versions
 scikit-learn>=1.3.0
 pandas>=1.5.0
@@ -14,6 +17,7 @@ numpy>=1.24.0
 pytesseract>=0.3.10
 Pillow>=9.0.0
 PyMuPDF>=1.22.0  # For PDF processing
+python-docx>=0.8.11  # For DOCX processing
 
 # Database
 pymongo>=4.0.0

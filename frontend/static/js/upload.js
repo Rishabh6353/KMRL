@@ -411,10 +411,18 @@ function uploadFile(fileInfo) {
                         fileInfo.status = 'completed';
                         fileInfo.documentData = response.document; // Store the processed document data
                         
-                        // Show processing results
-                        const message = `${fileInfo.file.name} uploaded and processed successfully! 
-                                       Classification: ${response.document.document_type} 
-                                       Department: ${response.document.department}`;
+                        // Show processing results with AI classification details
+                        let message = `${fileInfo.file.name} uploaded and processed successfully!\n`;
+                        message += `Classification: ${response.document.document_type}\n`;
+                        message += `Department: ${response.document.department}\n`;
+                        
+                        // Add AI classification details if available
+                        if (response.classification) {
+                            const confidence = Math.round(response.classification.confidence * 100);
+                            message += `Confidence: ${confidence}%\n`;
+                            message += `Method: ${response.classification.method === 'gemini_api' ? 'AI-Powered' : 'Fallback'}`;
+                        }
+                        
                         IDP.showAlert(message, 'success');
                         
                     } else if (response.document && response.document.status === 'failed') {
